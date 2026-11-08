@@ -39,7 +39,9 @@ func configure(dens: Array, radius: float, now: float = 0.0) -> void:
 ## radius, then the lower cell - while no taken den is within `spacing` radii. With `den_score`
 ## "cover" best is the most cover within half a radius (`cover`, 1 per cell of forest), grass
 ## breaking ties: a den in the wood, the pastures between. On an island (`coast`, how many cells
-## each lies from the sea, `TerrainSystem.coast_cells_at_index()`) half a radius from the sea too.
+## each lies from the sea, `TerrainSystem.coast_cells_at_index()`) `coast_radii` radii from the
+## sea too, half by default: the coast is longer than a rectangle's edge, and wolves kept to half
+## a radius from it had 4-6 dens on land a rectangle gave 6-8.
 ## `caps` is the grass each cell can hold (`ResourceSystem.export_caps()`), `walkable` per cell.
 static func place_dens(caps: PackedFloat32Array, walkable: PackedByteArray, cols: int, rows: int, cell: float,
 		water_sources: Array, config: Dictionary, seed: int, cover := PackedFloat32Array(),
@@ -49,6 +51,7 @@ static func place_dens(caps: PackedFloat32Array, walkable: PackedByteArray, cols
 	var water_cells := float(config.get("water_cells", 6.0))
 	var spacing := float(config.get("spacing", 1.8)) * radius_cells
 	var half := maxi(1, roundi(radius_cells * 0.5))
+	var coast_cells := float(config.get("coast_radii", 0.5)) * radius_cells
 	var summed := _summed_area(caps, cols, rows)
 	var by_cover := str(config.get("den_score", "grass")) == "cover" and cover.size() == caps.size()
 	var cover_summed := _summed_area(cover, cols, rows) if by_cover else PackedFloat64Array()
@@ -65,7 +68,7 @@ static func place_dens(caps: PackedFloat32Array, walkable: PackedByteArray, cols
 			if float(x) < radius_cells * 0.5 or float(y) < radius_cells * 0.5 \
 					or float(cols - 1 - x) < radius_cells * 0.5 or float(rows - 1 - y) < radius_cells * 0.5:
 				continue
-			if coast.size() == caps.size() and coast[index] < radius_cells * 0.5:
+			if coast.size() == caps.size() and coast[index] < coast_cells:
 				continue
 			var score := _box_sum(summed, cols, rows, x, y, half)
 			if by_cover:

@@ -473,6 +473,7 @@
     "territory": {
       "radius_cells": 22.0,
       "spacing": 1.8,
+      "coast_radii": 0.2,
       "step_cells": 3,
       "water_cells": 8.0,
       "capacity_multiplier": 4.0,

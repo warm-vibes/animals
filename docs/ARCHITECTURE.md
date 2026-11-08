@@ -1387,8 +1387,9 @@ species in `WorldState.territories`, saved, the view's copy sent when its revisi
 
 - Dens are placed once, from the map, with nothing drawn from `rng`
   (`TerritoryRegistry.place_dens()`): candidate cells every `step_cells`, each moved within its
-  step by a hash of the seed, walkable, half a radius from the edge and within `water_cells`
-  of a pond; taken best first by the grass the cells within half a radius can hold
+  step by a hash of the seed, walkable, half a radius from the edge (on an island
+  `coast_radii` radii from the sea, half by default; the wolves' 0.2, as at half the island
+  held 4-6 wolf dens on the land a rectangle held 6-8 on) and within `water_cells` of a pond; taken best first by the grass the cells within half a radius can hold
   (a summed-area table over `ResourceSystem.export_caps()`; `den_score` "cover" takes the
   wood instead, which changed nothing measured and is off), and none within `spacing` radii
   of another. On the large map `radius_cells` 12.5 and `spacing` 1.8 give about 17 dens
