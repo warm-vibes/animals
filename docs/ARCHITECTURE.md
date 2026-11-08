@@ -162,11 +162,14 @@ without it (`IslandTests`).
 - **On the land.** Round ponds (`water_generation`) keep a cell clear of the sea; the lakes,
   marshes and ponds of `WaterBodies` keep every bank two cells clear (`is_land`,
   `WorldState._on_island_land()`), lakes and marshes centred on land (furthest from the lakes
-  before was out at sea); streams run to the land's water, never to the sea; rivers run from a source at least 12 cells
+  before was out at sea), and up to `pond_count_scale` (1.22) times the ponds: they go where the
+  land is driest, an island's driest is its long coast, and many there touched the sea and were
+  not laid - at the rectangle's 18 the land lay 455-540 from water on seeds 3, 5, 7, 11 against
+  the rectangle's 430-465 (`island_map.gd`), and 420-456 at 22; streams run to the land's water, never to the sea; rivers run from a source at least 12 cells
   inland (drawn from the cells that may hold one) to the sea cell where the straight way in from
   the edge first meets the land, over the land, and one cell on; no ford within three cells of the
   sea. `random_point()` draws again at sea (snapped, every offshore draw put herds on the beach);
-  dens keep half a radius from the sea; a flight weighs the sea as the edge it is. Districts are
+  dens keep `coast_radii` radii from the sea (below); a flight weighs the sea as the edge it is. Districts are
   named on the land only.
 - **Drawn.** `WaterMask.stamp_sea()` adds the distance to the coast - where the cells' land,
   blended between their centres, is half: their edges with the corners rounded - negative out at

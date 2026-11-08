@@ -244,7 +244,8 @@ func initialize(new_config_bundle: Dictionary, new_event_bus, new_rng: RandomNum
 		# Lakes, marshes and ponds in natural shapes (`WaterBodies`), each world its own - on an
 		# island, on its land, every lobe's bank past the beach (`_on_island_land()`).
 		var is_land: Callable = Callable() if island_mask.is_empty() else Callable(self, "_on_island_land")
-		water_sources.append_array(WaterBodiesScript.generate(water_bodies, bounds, int(rng.seed), is_land))
+		water_sources.append_array(WaterBodiesScript.generate(_island_water_bodies(water_bodies, world_config),
+			bounds, int(rng.seed), is_land))
 	elif water_generation.is_empty():
 		for source in world_config.get("water_sources", []):
 			water_sources.append({
@@ -1690,6 +1691,22 @@ func _generate_water_sources(config: Dictionary) -> void:
 			if not island_mask.is_empty() and _island_coast_at(position) * float(island_mask["cell_size"]) < radius + float(island_mask["cell_size"]):
 				continue
 			water_sources.append({"position": position, "radius": radius})
+
+
+## `water_bodies` with, on an island, room for `terrain.island.pond_count_scale` times its ponds
+## (`ponds.count_max`). The ponds go where the land lies driest, and an island's driest is its
+## long coast, where many touched the sea and were not laid: at the rectangle's 18 the coast kept
+## dry, the land lay 455-540 from water against 430-465, and its deer died of thirst.
+static func _island_water_bodies(water_bodies: Dictionary, world_config: Dictionary) -> Dictionary:
+	var island: Dictionary = world_config.get("terrain", {}).get("island", {})
+	var scale := float(island.get("pond_count_scale", 1.0))
+	if not bool(island.get("enabled", false)) or scale == 1.0:
+		return water_bodies
+	var scaled := water_bodies.duplicate(true)
+	var ponds: Dictionary = WaterBodiesScript.settings(scaled)["ponds"].duplicate()
+	ponds["count_max"] = int(round(float(ponds["count_max"]) * scale))
+	scaled["ponds"] = ponds
+	return scaled
 
 
 ## Whether a natural body's bank may pass `position` (`WaterBodies.generate()`): two cells clear of

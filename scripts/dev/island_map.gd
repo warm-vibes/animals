@@ -69,6 +69,22 @@ func _initialize() -> void:
 		kind, run_seed, terrain.cols, terrain.rows, terrain.world_size.x, terrain.world_size.y, land,
 		float(land) / float(cells), walkable, beach, world.pond_count(), terrain.rivers.size(), str(mouths), str(dens), built])
 	print("  animals %s, land rect %s" % [str(counts), str(terrain.land_rect)])
+	# How far the walkable ground lies from water to drink (`world.water_sources`, ponds and the
+	# points along rivers and lakes): the mean, and the shares within 600 and 1200 units.
+	var far_sum := 0.0
+	var within := [0, 0]
+	for index in range(cells):
+		if not terrain.is_ground_index(index):
+			continue
+		var at := (Vector2(terrain.get_cell_coords(index)) + Vector2(0.5, 0.5)) * terrain.cell_size
+		var nearest := INF
+		for source in world.water_sources:
+			nearest = minf(nearest, maxf(0.0, at.distance_to(source["position"]) - float(source.get("radius", 0.0))))
+		far_sum += nearest
+		within[0] += 1 if nearest <= 600.0 else 0
+		within[1] += 1 if nearest <= 1200.0 else 0
+	print("  water sources %d, ground to water mean %.0f, within 600 %.2f, within 1200 %.2f" % [world.water_sources.size(),
+		far_sum / float(maxi(1, walkable)), float(within[0]) / float(maxi(1, walkable)), float(within[1]) / float(maxi(1, walkable))])
 	if picture != "":
 		var image := Image.create(terrain.cols, terrain.rows, false, Image.FORMAT_RGB8)
 		for index in range(cells):
