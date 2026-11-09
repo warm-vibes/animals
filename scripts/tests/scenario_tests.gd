@@ -406,11 +406,11 @@ func _test_the_fox_outbreak_bundle(a) -> void:
 	var bundle: Dictionary = ConfigLoaderScript.load_scenario_bundle("too_many_foxes")
 	a.is_true(int(bundle.world.climate.start_season_index) == 2 and int(bundle.world.spawns.predator_count) == 60,
 		"autumn, sixty foxes")
-	a.near(float(bundle.balance.attack.base_success_chance), 0.55, 0.0001, "hunting well")
+	a.near(float(bundle.balance.attack.base_success_chance), 0.6, 0.0001, "hunting well")
 	a.equal(bundle.powers.offered, ["cull", "lead_herd"], "a cull and a lead to fight them with")
 	a.equal(int(bundle.powers.powers.cull.charges), 8, "eight shots")
 	var shipped: Dictionary = ConfigLoaderScript.load_config_bundle()
-	a.is_true(float(shipped.balance.attack.base_success_chance) < 0.55 and int(shipped.world.spawns.predator_count) == 24,
+	a.is_true(float(shipped.balance.attack.base_success_chance) < 0.6 and int(shipped.world.spawns.predator_count) == 24,
 		"the sandbox keeps its foxes as they were")
 	var keep: Dictionary = bundle.challenge.goals[0]
 	a.is_true(int(keep.get("years", 1)) == 2 and str(keep.season) == "autumn" and float(keep.share_at_least) >= 1.0,

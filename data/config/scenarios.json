@@ -103,7 +103,7 @@
         "balance": {
           "lifecycle": {"founder_age_share": 0.4},
           "population_regulation": {"capacity_multipliers": {"predator": 2.0}},
-          "attack": {"base_success_chance": 0.55}
+          "attack": {"base_success_chance": 0.6}
         },
         "powers": {
           "offered": ["cull", "lead_herd"],

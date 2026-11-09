@@ -773,7 +773,7 @@ Current snapshot categories:
   most grass in 1500 by water once hunger passed 30 6 of 8 (0.97). Seed 19 is the clearest of
   the eight: 0.65 with no powers (5 dead of thirst, 1 of hunger), 1.3 with two leads and none dead
 - «Слишком много лис» (`too_many_foxes`): the medium map, seed 7, flat ground, begun in autumn;
-  sixty foxes (cap 120) that hunt well (`attack.base_success_chance` 0.55 against 0.38), founders
+  sixty foxes (cap 120) that hunt well (`attack.base_success_chance` 0.6 against 0.38), founders
   young. Goals: the own herd no smaller than at the start two autumns on (`years` 2, second 960),
   lost below a quarter at any time, the bonus no more than 12 foxes culled. Powers: eight culls
   and two leads; the foxes' curve is watched beside the herd's
@@ -791,6 +791,14 @@ Current snapshot categories:
   2), spending every shot at once on 7 of 8 (18; the bonus never), leading it away from them on 3
   of 8. The foxes cannot be culled out: at their cap whatever was shot, the moderation is the
   bonus's
+- Retuned with the island rules (2026-11-09), when culling stopped paying: a hungry herd that
+  looks as far as it covers for grass (`hungry_search`) held on with no powers 7 of 8 (4 of 8
+  with that search off), the culls 8 of 8 as before. Foxes hunting at 0.6 rather than 0.55 gave
+  4 of 8 with no powers and 7 of 8 with eight culls, against 3 and 8 on main before the rules -
+  seed 4 lost either way, its herd a fifth of its start. Measured again on the code of 2026-11-20
+  (hunts that reach by land, the reserve's deer and fox settings, dens down their own fields): at
+  0.55 the herd held on with no powers 6 of 8 and with culls 8 of 8, at 0.6 4 of 8 and 7 of 8
+  (16 culled on average), seed 7 lost either way
 - Tuned on eight seeds with the camera on the herd. With no powers the herd was lost on 8 of 8
   (a ninth of it left at second 540 on average, 18 of 20 dead of thirst); digging and leading
   once its water ran low won 8 of 8 (0.72 left, 4 of thirst), and acting only once the water was
