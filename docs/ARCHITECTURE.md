@@ -4,6 +4,93 @@
 
 This document describes the current structure of `Engine of Ecosystem`, the main runtime flow, the hybrid AI model, and the responsibilities of each major subsystem.
 
+## System Map
+
+What owns what and how the parts talk. Solid arrows are calls and ownership, dashed ones
+signals and events. The worker thread alone touches the live world while a tick runs; the main
+thread sees it only through snapshots and deltas (Runtime Flow below). When a module moves or a
+folder is added under `scripts/`, update this map and the README's short one.
+
+```mermaid
+flowchart TB
+  subgraph inputs["Inputs"]
+    cfg[("world, species, balance, debug,<br/>visuals, powers, help .json")]
+    patches[("presets.json, scenarios.json,<br/>reserve.json patches")]
+    chats["Telegram, Twitch, YouTube chats"]
+    player(["Player: mouse, keys, powers"])
+  end
+
+  subgraph mainthread["Main thread - scripts/ui, scripts/story, scripts/reserve"]
+    mc["MainController"]
+    view["WorldView: TerrainTileRenderer, AgentSpriteRenderer,<br/>GroundTraces, OverlayRenderer, EventEffects"]
+    hud["HUD: PlayerBar, PowersBar, HerdCard, SelectionCard,<br/>EcologyStrip, StoryFeed, ChronicleWindow, MiniMap"]
+    cam["GameCamera, ReserveDirector"]
+    story["StoryBook: AnimalNames, Lineage, StoryRecords,<br/>Epitaph, SeasonLedger, TraitHistory, PlaceNames"]
+    rs["ReserveSession: ChatCommands, VoteRound,<br/>ViewerBook, StreamChats"]
+    save[("SaveSystem: user:// slots")]
+  end
+
+  subgraph core["scripts/core"]
+    loader["ConfigLoader"]
+    mgr["SimulationManager: clock, speed, LOD focus,<br/>command queue, ScenarioRunner"]
+    worker["SimulationWorker: worker thread"]
+    bus(["EventBus"])
+  end
+
+  subgraph worldbox["scripts/world - WorldState"]
+    ws["WorldState"]
+    terr["TerrainSystem, IslandMask,<br/>rivers, ponds"]
+    water["WaterSystem, WaterBodies"]
+    grass["ResourceSystem: grass"]
+    clim["Climate, Weather"]
+    fields["FearField, TrailField"]
+    terrs["TerritoryRegistry per species"]
+    scen["ScenerySystem, SpatialGrid"]
+    ps["PlayerState: powers, charges"]
+  end
+
+  subgraph agentsbox["scripts/agents"]
+    agents["AgentBase: deer, fox, grouse, hare, wolf<br/>Perception, Steering, Breeding, Traits"]
+    ai["AI: FSM state + ActionSelector,<br/>evaluators score actions"]
+  end
+
+  subgraph out["Outputs"]
+    stats["StatsSystem, PerformanceWindow"]
+    tele["TelemetryLogger"]
+    exp[("user://exports CSV, JSON")]
+  end
+
+  cfg --> loader
+  patches --> loader
+  loader --> mgr
+  player --> mc
+  chats --> rs
+  mc -- "enqueue_command" --> mgr
+  rs -- "enqueue_command" --> mgr
+  mgr -- "step" --> worker
+  worker --> ws
+  ws --> terr & water & grass & clim & fields & terrs & scen & ps
+  ws --> agents
+  agents --> ai
+  ai -- "reads" --> fields & grass & water & scen
+  agents -.-> bus
+  ws -.-> bus
+  bus -.-> worker
+  worker -- "snapshot, deltas, events" --> mgr
+  mgr --> stats --> tele --> exp
+  mgr -. "tick_completed, world_event" .-> mc
+  mc --> view & hud & cam
+  mc -- "events of the tick" --> story
+  story --> hud
+  rs -. "told, focus_requested" .-> mc
+  mc <--> save
+  save -- "restore" --> mgr
+```
+
+The parts are described in this document's sections: `SimulationManager` and `WorldState`
+under Core Subsystems, agents and their AI under Agent Model, the screen under UI Layer,
+sleeping sectors under LOD Model.
+
 ## Runtime Flow
 
 1. `MainController` boots the interactive scene and initializes `SimulationManager`.

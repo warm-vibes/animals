@@ -11,10 +11,16 @@ The current build simulates a continuous 2D world with biomes, obstacles, grass 
 - Headless scene: `res://scenes/main/headless_runner.tscn`
 - Default seed: `3`
 - Tick rate: `18` ticks per second
-- World size: `14400 x 8100`
-- Initial population: `240` herbivores in `12` herds, `24` predators
-- Water sources: generated from `world.water_generation` and scaled with map area, about 52 on the default large map; they fill in spring and dry in summer (`world.water_levels`)
-- Terrain: meadow, forest, drought, swamp biomes plus obstacles and chokepoints
+- World size: `19440 x 10935`, an island whose land is the old `14400 x 8100` rectangle (`terrain.island`)
+- Initial population (`world.spawns`): `240` deer in `12` herds, `24` foxes, `72` grouse in `12` flocks,
+  `40` hares in `10` groups; wolves `0` unless the setup asks. In the configs and the code the species
+  ids are `herbivore` (deer), `predator` (fox), `scavenger` (grouse), `hare` and `wolf`
+- Water: natural bodies from `world.water_bodies` - 3 lakes, 3 marshes, 8-18 ponds (x1.22 on the
+  island) and 7 streams; with them off, as in the scenarios, round watering holes from
+  `world.water_generation` at 0.45 per million square units. Ponds fill in spring and dry in summer
+  (`world.water_levels`)
+- Terrain: meadow, forest, drought, swamp, cliff and dense forest biomes, obstacles, rivers with fords,
+  the sea round the island
 
 ## Core Systems
 
@@ -194,6 +200,7 @@ heavy --pool animals-user-data --status   # who holds the test lock
   (640 px wide, 15 frames a second), saved to Pictures/Engine of Ecosystem; `H` hides its bar,
   `Esc` or `P` leaves it
 - `F12`: switch developer mode; in it `Tab` shows or hides the developer panel and charts
+- `F10` (living reserve only): stand the reserve upright, 9:16 for phones, or lay it down again
 - `F`: toggle follow on the selected agent
 - `Q`, `E`, `R`: aim «Водопой», «Повести стадо» or «Отстрел» - those the world offers (also the
   buttons at the bottom centre); left click where, right click or `Esc` to stop aiming
@@ -347,93 +354,82 @@ The metrics carry, per species, how many animals are at risk of starvation (`sta
 - `data/config/help.json`
   Sections of the in-game help screen, as BBCode. Adding a section here adds a button
   to that screen with no code change
+- `data/config/reserve.json`
+  The living reserve: its world and species patches, powers, chat commands, votes, teams, viewer
+  names and the director camera
+
+## System Map
+
+The game is one Godot process with two threads. The main thread draws and listens; the
+simulation runs on one worker thread that alone owns the live world, and only snapshots and
+deltas come back. Orders from the player and from stream chats go the other way, as queued
+commands. The full map, with the world's own systems, is in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#system-map).
+
+```mermaid
+flowchart LR
+  cfg[("data/config/*.json<br/>+ presets, scenarios")] --> loader[ConfigLoader]
+  loader --> mgr
+
+  subgraph main["Main thread"]
+    ui["MainController<br/>HUD, camera, minimap, renderers"]
+    story["StoryBook<br/>names, lineage, records, chronicle"]
+    reserve["ReserveSession<br/>Telegram, Twitch, YouTube chats"]
+    save[("SaveSystem<br/>user:// slots")]
+  end
+
+  subgraph sim["Simulation"]
+    mgr["SimulationManager<br/>clock, commands, LOD focus"]
+    worker["SimulationWorker<br/>worker thread"]
+    world["WorldState<br/>terrain, water, grass, climate"]
+    agents["Agents + FSM/utility AI"]
+    stats["StatsSystem + TelemetryLogger"]
+  end
+
+  ui -- "commands: powers, pause, speed" --> mgr
+  reserve -- "chat commands" --> mgr
+  mgr -- "step" --> worker --> world --> agents
+  agents -. "EventBus events" .-> worker
+  worker -- "snapshots, deltas, events" --> mgr
+  mgr --> stats
+  mgr -- "tick_completed, world_event" --> ui
+  ui -- "each tick's events" --> story
+  stats -- "exports" --> exp[("user://exports")]
+  ui <--> save
+```
 
 ## Project Structure
 
 ```text
-scenes/main/
-  main.tscn
-  headless_runner.tscn
-scenes/tests/
-  test_runner.tscn
-scripts/core/
-  config_loader.gd
-  event_bus.gd
-  headless_runner.gd
-  simulation_manager.gd
-scripts/agents/ai/
-  agent_ai_state.gd
-  agent_action.gd
-  herbivore_ai.gd
-  predator_ai.gd
-  action_selector.gd
-  evaluators/
-scripts/world/
-  resource_system.gd
-  spatial_grid.gd
-  terrain_system.gd
-  world_state.gd
-scripts/agents/
-  agent_base.gd
-  traits.gd
-  herbivore.gd
-  perception.gd
-  predator.gd
-  steering.gd
-scripts/stats/
-  stats_system.gd
-  telemetry_logger.gd
-scripts/story/
-  animal_names.gd
-  lineage.gd
-  story_book.gd
-  story_log.gd
-  place_names.gd
-  story_records.gd
-  epitaph.gd
-  family_tree.gd
-  trait_history.gd
-scripts/ui/
-  charts_panel.gd
-  debug_panel.gd
-  ecology_strip.gd
-  event_effects.gd
-  game_camera.gd
-  herd_card.gd
-  hud_text.gd
-  main_controller.gd
-  minimap.gd
-  overlay_renderer.gd
-  pinned_bar.gd
-  player_bar.gd
-  selection_card.gd
-  story_feed.gd
-  place_labels.gd
-  epitaph_card.gd
-  chronicle_window.gd
-  why_text.gd
-  settings_store.gd
-  settings_panel.gd
-  photo_mode.gd
-  gif_recorder.gd
-  gif_encoder.gd
-  world_view.gd
-scripts/tests/
-  test_runner.gd
-  *_tests.gd
-data/config/
-  balance.json
-  debug.json
-  species.json
-  world.json
-docs/
-  ARCHITECTURE.md
+scenes/main/            main.tscn (the game), headless_runner.tscn
+scenes/tests/           test_runner.tscn, the built-in suites
+scripts/core/           SimulationManager, SimulationWorker, ConfigLoader, EventBus, SaveSystem,
+                        ScenarioRunner, PlayerCommands, SpeciesRegistry, headless runners
+scripts/world/          WorldState and what it owns: terrain, island mask, water bodies and
+                        levels, grass, climate, weather, fear and trail fields, territories,
+                        scenery, spatial grid, the player's state
+scripts/agents/         agent base, deer, foxes, grouse, hares; perception, steering, breeding,
+                        inherited traits
+scripts/agents/ai/      FSM states, actions, the utility selector, per-species AI, evaluators/
+scripts/stats/          stats sampling, telemetry export, the performance window
+scripts/story/          names, lineage, family tree, records, epitaphs, seasons, trait history
+scripts/reserve/        the living reserve: chat readers, commands, votes, viewers and wards
+scripts/ui/             the main controller and everything drawn: HUD, cards, chronicle, minimap,
+                        renderers, photo mode, stream wizard, director camera
+scripts/dev/            probes, audits, captures, benchmarks, matrix runners, heavy.sh
+scripts/tests/          test_runner.gd and *_tests.gd
+data/config/            the JSON configs (see Configuration)
+assets/                 atlases, tiles, UI skin; CraftPix sources stay out of git
+tools/                  atlas builders, git hooks, the stream bridge
+docs/                   architecture, streaming guide, audits and verification reports
 ```
 
 ## Documentation
 
-- [Architecture Overview](docs/ARCHITECTURE.md)
-- [Living reserve on a stream: the chat bridge, keys, OBS](tools/stream_bridge/README.md)
+- [Architecture Overview](docs/ARCHITECTURE.md), with the full system map
+- [Living reserve on a stream: the admin's guide](docs/STREAMING.md)
+- [Living reserve: the chat bridge from another machine](tools/stream_bridge/README.md)
+- [Audit, September 2026](docs/AUDIT_2026-09.md); reports under `docs/verification/` and `docs/audit/`
 
 ## Seasons and the Day/Night Cycle
 
