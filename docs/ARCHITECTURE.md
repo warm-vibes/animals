@@ -13,78 +13,54 @@ folder is added under `scripts/`, update this map and the README's short one.
 
 ```mermaid
 flowchart TB
-  subgraph inputs["Inputs"]
-    cfg[("world, species, balance, debug,<br/>visuals, powers, help .json")]
-    patches[("presets.json, scenarios.json,<br/>reserve.json patches")]
-    chats["Telegram, Twitch, YouTube chats"]
-    player(["Player: mouse, keys, powers"])
-  end
+  player(["Player<br/>mouse, keys, powers"])
+  chats(["Telegram, Twitch,<br/>YouTube chats"])
+  cfg[("data/config/*.json<br/>+ presets, scenarios,<br/>reserve patches")]
 
-  subgraph mainthread["Main thread - scripts/ui, scripts/story, scripts/reserve"]
-    mc["MainController"]
-    view["WorldView: TerrainTileRenderer, AgentSpriteRenderer,<br/>GroundTraces, OverlayRenderer, EventEffects"]
-    hud["HUD: PlayerBar, PowersBar, HerdCard, SelectionCard,<br/>EcologyStrip, StoryFeed, ChronicleWindow, MiniMap"]
-    cam["GameCamera, ReserveDirector"]
-    story["StoryBook: AnimalNames, Lineage, StoryRecords,<br/>Epitaph, SeasonLedger, TraitHistory, PlaceNames"]
-    rs["ReserveSession: ChatCommands, VoteRound,<br/>ViewerBook, StreamChats"]
-    save[("SaveSystem: user:// slots")]
+  subgraph mainthread["Main thread"]
+    rs["ReserveSession<br/>scripts/reserve<br/>ChatCommands, VoteRound,<br/>ViewerBook, StreamChats"]
+    mc["MainController<br/>scripts/ui"]
+    screen["On screen, scripts/ui<br/>WorldView: terrain, sprites, traces, overlays<br/>HUD: bars, cards, feed, chronicle, minimap<br/>GameCamera, ReserveDirector"]
+    story["StoryBook, scripts/story<br/>names, lineage, records,<br/>epitaphs, seasons, traits"]
+    save[("SaveSystem<br/>user:// slots")]
   end
 
   subgraph core["scripts/core"]
     loader["ConfigLoader"]
-    mgr["SimulationManager: clock, speed, LOD focus,<br/>command queue, ScenarioRunner"]
-    worker["SimulationWorker: worker thread"]
+    mgr["SimulationManager<br/>clock, speed, LOD focus,<br/>command queue, ScenarioRunner"]
+    stats["StatsSystem, TelemetryLogger<br/>to user://exports"]
+  end
+
+  subgraph workerthread["Worker thread: the only owner of the live world"]
+    worker["SimulationWorker"]
     bus(["EventBus"])
-  end
-
-  subgraph worldbox["scripts/world - WorldState"]
     ws["WorldState"]
-    terr["TerrainSystem, IslandMask,<br/>rivers, ponds"]
-    water["WaterSystem, WaterBodies"]
-    grass["ResourceSystem: grass"]
-    clim["Climate, Weather"]
-    fields["FearField, TrailField"]
-    terrs["TerritoryRegistry per species"]
-    scen["ScenerySystem, SpatialGrid"]
-    ps["PlayerState: powers, charges"]
+    systems["World systems, scripts/world<br/>TerrainSystem, IslandMask, rivers, ponds<br/>WaterSystem, WaterBodies<br/>ResourceSystem: grass<br/>Climate, Weather<br/>FearField, TrailField<br/>TerritoryRegistry, ScenerySystem<br/>SpatialGrid, PlayerState"]
+    agents["Agents, scripts/agents<br/>deer, fox, grouse, hare, wolf<br/>Perception, Steering, Breeding, Traits"]
+    ai["AI, scripts/agents/ai<br/>FSM state + ActionSelector,<br/>evaluators score actions"]
   end
 
-  subgraph agentsbox["scripts/agents"]
-    agents["AgentBase: deer, fox, grouse, hare, wolf<br/>Perception, Steering, Breeding, Traits"]
-    ai["AI: FSM state + ActionSelector,<br/>evaluators score actions"]
-  end
-
-  subgraph out["Outputs"]
-    stats["StatsSystem, PerformanceWindow"]
-    tele["TelemetryLogger"]
-    exp[("user://exports CSV, JSON")]
-  end
-
-  cfg --> loader
-  patches --> loader
-  loader --> mgr
   player --> mc
   chats --> rs
-  mc -- "enqueue_command" --> mgr
   rs -- "enqueue_command" --> mgr
-  mgr -- "step" --> worker
-  worker --> ws
-  ws --> terr & water & grass & clim & fields & terrs & scen & ps
-  ws --> agents
-  agents --> ai
-  ai -- "reads" --> fields & grass & water & scen
-  agents -.-> bus
-  ws -.-> bus
-  bus -.-> worker
-  worker -- "snapshot, deltas, events" --> mgr
-  mgr --> stats --> tele --> exp
-  mgr -. "tick_completed, world_event" .-> mc
-  mc --> view & hud & cam
-  mc -- "events of the tick" --> story
-  story --> hud
   rs -. "told, focus_requested" .-> mc
-  mc <--> save
-  save -- "restore" --> mgr
+  mc -- "enqueue_command" --> mgr
+  mgr -. "tick_completed, world_event" .-> mc
+  mc --> screen
+  mc -- "events of the tick" --> story
+  story --> screen
+  mc <-- "save, restore" --> save
+  cfg --> loader --> mgr
+  mgr --> stats
+  mgr -- "step" --> worker
+  worker -- "snapshot, deltas, events" --> mgr
+  worker --> ws
+  ws --> systems
+  ws --> agents --> ai
+  ai -- "reads" --> systems
+  agents -.-> bus
+  systems -.-> bus
+  bus -.-> worker
 ```
 
 The parts are described in this document's sections: `SimulationManager` and `WorldState`
